@@ -1,0 +1,96 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Safety Net: default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- REUSABLE SECURITY PRIMITIVES AND HELPERS ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && (request.auth.token.email_verified == true);
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- ENTITY-SPECIFIC SCHEMAS AND INVARIANTS ---
+    
+    // User Validator Function
+    function isValidUser(data) {
+      return data.uid is string && data.uid.size() <= 128 && data.uid == request.auth.uid
+        && data.email is string && data.email.size() <= 256
+        && (data.role == 'candidate' || data.role == 'employer')
+        && (data.displayName == null || (data.displayName is string && data.displayName.size() <= 128))
+        && (data.photoURL == null || (data.photoURL is string && data.photoURL.size() <= 1024));
+    }
+
+    // Job Validator Function
+    function isValidJob(data) {
+      return data.title is string && data.title.size() <= 128
+        && data.companyName is string && data.companyName.size() <= 128
+        && data.industry is string && data.industry.size() <= 128
+        && data.location is string && data.location.size() <= 128
+        && (data.type == 'Full-time' || data.type == 'Part-time' || data.type == 'Contract' || data.type == 'Remote' || data.type == 'Internship')
+        && data.salary is string && data.salary.size() <= 64
+        && data.experience is string && data.experience.size() <= 128
+        && data.description is string && data.description.size() <= 10000
+        && data.postedAt is string && data.postedAt.size() <= 64
+        && data.creatorId == request.auth.uid
+        && (data.featured == null || data.featured is bool)
+        && (data.requirements == null || (data.requirements is list && data.requirements.size() <= 20 && (data.requirements.size() == 0 || data.requirements[0] is string)))
+        && (data.benefits == null || (data.benefits is list && data.benefits.size() <= 20 && (data.benefits.size() == 0 || data.benefits[0] is string)));
+    }
+
+    // --- MATCH BLOCKS FOR RECOVERY COLLECTIONS ---
+
+    // 1. Users Collection
+    match /users/{userId} {
+      // PII Protection: Only the user themselves can read or write their own user profile!
+      allow get: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidUser(incoming())
+        && incoming().createdAt == request.time;
+      allow update: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidUser(incoming())
+        && incoming().createdAt == existing().createdAt;
+      allow delete: if false; // Profiles are immortal
+    }
+
+    // 2. Jobs Collection
+    match /jobs/{jobId} {
+      // Anyone signed in can view individual jobs and query lists
+      allow get: if isSignedIn() && isValidId(jobId);
+      // Query Enforcer: Evaluating the elements safely, only signed in users can list queries
+      allow list: if isSignedIn();
+
+      // Email-verified standard employers can create jobs
+      allow create: if isVerifiedUser() && isValidId(jobId) && isValidJob(incoming());
+
+      // Only the respective creator can update or delete their jobs
+      allow update: if isVerifiedUser() && isValidId(jobId) && isValidJob(incoming())
+        && existing().creatorId == request.auth.uid
+        && incoming().creatorId == existing().creatorId
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'title', 'companyName', 'industry', 'location', 'type', 'salary', 
+          'experience', 'description', 'requirements', 'benefits', 'postedAt', 'featured'
+        ]);
+
+      allow delete: if isVerifiedUser() && isValidId(jobId)
+        && existing().creatorId == request.auth.uid;
+    }
+
+  }
+}

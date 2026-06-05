@@ -1,0 +1,117 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User account information and roles",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Unique user ID from Firebase Auth"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name of the user"
+        },
+        "email": {
+          "type": "string",
+          "description": "User email address"
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "User avatar URL"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["candidate", "employer"],
+          "description": "User platform role"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        }
+      },
+      "required": ["uid", "email", "createdAt"]
+    },
+    "Job": {
+      "title": "Job vacancy",
+      "description": "Details of a vacant job position",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "System-generated unique job ID"
+        },
+        "title": {
+          "type": "string",
+          "description": "Job position title"
+        },
+        "companyName": {
+          "type": "string",
+          "description": "Nominator company name"
+        },
+        "companyLogo": {
+          "type": "string",
+          "description": "URL to company logo image"
+        },
+        "industry": {
+          "type": "string",
+          "description": "Vacancy industry or career path category"
+        },
+        "location": {
+          "type": "string",
+          "description": "Physical address or Remote label"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["Full-time", "Part-time", "Contract", "Remote", "Internship"],
+          "description": "Employment type"
+        },
+        "salary": {
+          "type": "string",
+          "description": "Financial compensation range"
+        },
+        "experience": {
+          "type": "string",
+          "description": "Required years or level of experience"
+        },
+        "description": {
+          "type": "string",
+          "description": "Comprehensive role description"
+        },
+        "requirements": {
+          "type": "array",
+          "description": "Bullet list of required candidate skills"
+        },
+        "benefits": {
+          "type": "array",
+          "description": "Bullet list of candidate benefits"
+        },
+        "postedAt": {
+          "type": "string",
+          "description": "Strict posted timestamp or ISO string"
+        },
+        "featured": {
+          "type": "boolean",
+          "description": "Admin highlighted vacancy indicator"
+        },
+        "creatorId": {
+          "type": "string",
+          "description": "UID of the employer who posted this job"
+        }
+      },
+      "required": ["title", "companyName", "industry", "location", "type", "salary", "experience", "description", "postedAt", "creatorId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Secure user documents containing PII (email)"
+    },
+    "/jobs/{jobId}": {
+      "schema": "Job",
+      "description": "Job postings database accessible to candidates and manageable by respective creators"
+    }
+  }
+}

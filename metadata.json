@@ -1,0 +1,6 @@
+{
+  "name": "Job Portal",
+  "description": "A modern, premium job marketplace landing page with advanced search, interactive dashboard, and job posting.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
